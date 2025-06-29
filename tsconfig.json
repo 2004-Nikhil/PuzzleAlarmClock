@@ -1,3 +1,16 @@
 {
-  "extends": "@react-native/typescript-config"
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    // Add your compiler options here if needed
+  },
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.config.js"
+  ],
+  "include": [
+    "src",
+    "types/react-native-sqlite-storage.d.ts" // <-- Make sure this file exists
+  ]
 }

@@ -16,7 +16,16 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { RootStackParamList } from '../navigation/AppNavigator';
-
+import {
+  getDBConnection,
+  getAlarmById,
+  saveAlarm,
+  updateAlarm,
+  deleteAlarm,
+  Alarm,
+  ChallengeConfig,
+  StepsChallengeConfig // Import the specific config type
+} from '../database/database';
 // Define the type for the route's params
 type EditAlarmRouteProp = RouteProp<RootStackParamList, 'EditAlarm'>;
 
@@ -41,30 +50,35 @@ const EditAlarmScreen = () => {
 
   // --- DATA LOADING FOR EDIT MODE ---
   useEffect(() => {
-    if (isEditing) {
-      // TODO: Fetch alarm data from your database using `alarmId`
-      // For demonstration, we'll populate it with dummy data.
-      console.log(`Editing alarm with ID: ${alarmId}`);
-
-      // --- DUMMY DATA ---
-      const fetchedAlarm = {
-        time: new Date().setHours(7, 30, 0, 0),
-        label: 'Morning Workout',
-        repeatDays: [1, 2, 3, 4, 5], // Mon-Fri
-        dismissMethod: 'STEPS' as const,
-        stepCount: 50,
-        wakeUpCheck: true,
-      };
-      // --- END DUMMY DATA ---
-
-      setTime(new Date(fetchedAlarm.time));
-      setLabel(fetchedAlarm.label);
-      setRepeatDays(fetchedAlarm.repeatDays);
-      setDismissMethod(fetchedAlarm.dismissMethod);
-      setStepCount(fetchedAlarm.stepCount);
-      setWakeUpCheck(fetchedAlarm.wakeUpCheck);
-    }
-  }, [isEditing, alarmId]);
+  if (isEditing) {
+    const loadAlarmData = async () => {
+      try {
+        const db = await getDBConnection();
+        const fetchedAlarm = await getAlarmById(db, alarmId);
+        if (fetchedAlarm) {
+          // Time needs to be parsed back into a Date object
+          const [hours, minutes] = fetchedAlarm.time.split(':').map(Number);
+          const date = new Date();
+          date.setHours(hours, minutes, 0, 0);
+          
+          setTime(date);
+          setLabel(fetchedAlarm.label);
+          setRepeatDays(fetchedAlarm.repeatDays);
+          setDismissMethod(fetchedAlarm.challengeType);
+          setWakeUpCheck(fetchedAlarm.wakeUpCheck);
+          if (fetchedAlarm.challengeType === 'STEPS') {
+              // TypeScript knows that if the type is 'STEPS', challengeConfig MUST be StepsChallengeConfig
+              const config = fetchedAlarm.challengeConfig as StepsChallengeConfig;
+              setStepCount(config.count || 30);
+            }
+        }
+      } catch(error) {
+          console.error(error);
+      }
+    };
+    loadAlarmData();
+  }
+}, [isEditing, alarmId]);
 
   // --- HANDLER FUNCTIONS ---
 
@@ -89,47 +103,54 @@ const EditAlarmScreen = () => {
     );
   };
 
-  const handleSave = () => {
-    const alarmData = {
-      id: alarmId, // Will be undefined for new alarms
-      time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      label,
-      repeatDays,
-      isEnabled: true, // New/edited alarms are enabled by default
-      challenge: {
-        type: dismissMethod,
-        config: dismissMethod === 'STEPS' ? { count: stepCount } : {},
-      },
-      wakeUpCheck,
-    };
-
-    console.log('Saving alarm data:', alarmData);
-    // TODO:
-    // 1. Save this `alarmData` object to your SQLite database.
-    //    - If `isEditing`, UPDATE the existing record.
-    //    - If not, INSERT a new record and get its new ID.
-    // 2. Call your native scheduler module to set/update the alarm in Android's AlarmManager.
-    //    - `NativeAlarmScheduler.setAlarm(alarmData);`
-
-    navigation.goBack();
+  const handleSave = async () => {
+    let config: ChallengeConfig = {};
+    if (dismissMethod === 'STEPS') {
+        config = { count: stepCount };
+    }
+  const alarmData: Omit<Alarm, 'id'> = {
+    time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    label,
+    repeatDays,
+    isEnabled: true,
+    challengeType: dismissMethod,
+    challengeConfig: config,
+    wakeUpCheck,
   };
+
+  try {
+    const db = await getDBConnection();
+    if (isEditing) {
+      await updateAlarm(db, { ...alarmData, id: alarmId });
+    } else {
+      await saveAlarm(db, alarmData);
+    }
+    navigation.goBack();
+  } catch (error) {
+    console.error('Failed to save alarm:', error);
+  }
+};
   
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Alarm',
-      'Are you sure you want to delete this alarm?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {
-          console.log(`Deleting alarm with ID: ${alarmId}`);
-          // TODO:
-          // 1. Call your native scheduler module to CANCEL the alarm in AlarmManager.
-          // 2. Delete the alarm from your SQLite database.
-          navigation.goBack();
-        }},
-      ]
-    );
-  };
+  Alert.alert(
+    'Delete Alarm',
+    'Are you sure you want to delete this alarm?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          if (!isEditing) return;
+          try {
+              const db = await getDBConnection();
+              await deleteAlarm(db, alarmId);
+              // TODO: Cancel native scheduled alarm
+              navigation.goBack();
+          } catch (error) {
+              console.error('Failed to delete alarm:', error);
+          }
+      }},
+    ]
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
