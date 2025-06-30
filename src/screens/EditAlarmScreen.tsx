@@ -26,6 +26,9 @@ import {
   ChallengeConfig,
   StepsChallengeConfig // Import the specific config type
 } from '../database/database';
+
+import AlarmScheduler from '../native/AlarmSchedulerModule';
+
 // Define the type for the route's params
 type EditAlarmRouteProp = RouteProp<RootStackParamList, 'EditAlarm'>;
 
@@ -120,11 +123,21 @@ const EditAlarmScreen = () => {
 
   try {
     const db = await getDBConnection();
+    let currentAlarmId = alarmId;
+
     if (isEditing) {
-      await updateAlarm(db, { ...alarmData, id: alarmId });
+        await updateAlarm(db, { ...alarmData, id: currentAlarmId });
     } else {
-      await saveAlarm(db, alarmData);
+        // For new alarms, we need the ID returned from the database
+        const newId = await saveAlarm(db, alarmData);
+        currentAlarmId = newId;
     }
+
+    // Schedule the alarm using the native module
+    if (currentAlarmId) {
+        AlarmScheduler.set(currentAlarmId, alarmData.time, alarmData.repeatDays);
+    }
+
     navigation.goBack();
   } catch (error) {
     console.error('Failed to save alarm:', error);
@@ -142,7 +155,7 @@ const EditAlarmScreen = () => {
           try {
               const db = await getDBConnection();
               await deleteAlarm(db, alarmId);
-              // TODO: Cancel native scheduled alarm
+              AlarmScheduler.cancel(alarmId);
               navigation.goBack();
           } catch (error) {
               console.error('Failed to delete alarm:', error);
