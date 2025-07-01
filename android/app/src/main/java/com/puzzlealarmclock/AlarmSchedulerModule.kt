@@ -61,4 +61,10 @@ class AlarmSchedulerModule(private val reactContext: ReactApplicationContext) : 
         alarmManager.cancel(pendingIntent)
         Log.d("AlarmSchedulerModule", "Alarm cancelled.")
     }
+    @ReactMethod
+    fun stopAlarmService() {
+        Log.d("AlarmSchedulerModule", "Stopping alarm service from React Native.")
+        val serviceIntent = Intent(reactContext, AlarmService::class.java)
+        reactContext.stopService(serviceIntent)
+    }
 }

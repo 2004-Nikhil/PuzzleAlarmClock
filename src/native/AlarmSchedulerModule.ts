@@ -4,6 +4,7 @@ import { NativeModules } from 'react-native';
 interface IAlarmScheduler {
   setAlarm(alarmId: number, timestamp: number): void;
   cancelAlarm(alarmId: number): void;
+  stopAlarmService(): void;
 }
 
 // Get the native module and cast it to our interface
@@ -43,4 +44,8 @@ export default {
     console.log(`JS: Cancelling alarm ID ${alarmId}`);
     AlarmScheduler.cancelAlarm(alarmId);
   },
+  stop: () => {
+    console.log("JS: Stopping alarm service.");
+    AlarmScheduler.stopAlarmService();
+  }
 };
