@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, StatusBar,BackHandler } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getDBConnection, getAlarmById, Alarm, StepsChallengeConfig } from '../database/database';
@@ -18,6 +18,10 @@ const AlarmRingingScreen = ({ route }: Props) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Prevent back button from closing the alarm
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      return true; // Prevent default back action
+    });
     const fetchAlarm = async () => {
       try {
         const db = await getDBConnection();
@@ -36,12 +40,20 @@ const AlarmRingingScreen = ({ route }: Props) => {
       }
     };
     fetchAlarm();
+
+    return () => {
+      backHandler.remove();
+    };
   }, [alarmId]);
 
   const handleDismiss = () => {
     console.log("Dismissing alarm and stopping service...");
     // This is the crucial call to our native module to stop sound/vibration
     AlarmScheduler.stop();
+    // Close the app after a short delay
+    setTimeout(() => {
+      BackHandler.exitApp();
+    }, 500);
   };
 
   const renderChallenge = () => {
