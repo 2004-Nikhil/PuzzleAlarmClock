@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import AppNavigator from './navigation/AppNavigator';
 import { getDBConnection, createTables } from './database/database';
 
-const App = () => {
+const App = (props: { alarmId?: number }) => {
   useEffect(() => {
     const initializeDB = async () => {
       try {
@@ -18,7 +18,7 @@ const App = () => {
     initializeDB();
   }, []);
 
-  return <AppNavigator />;
+  return <AppNavigator initialAlarmId={props.alarmId} />;
 };
 
 export default App;
