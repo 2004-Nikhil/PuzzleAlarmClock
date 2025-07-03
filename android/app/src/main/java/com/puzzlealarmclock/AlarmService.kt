@@ -8,11 +8,18 @@ import android.os.*
 import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.util.*
+import java.text.SimpleDateFormat
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 class AlarmService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var alarmChecker: ScheduledExecutorService? = null
+    private var currentAlarmId: Int = -1
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -21,7 +28,11 @@ class AlarmService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
             val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
+            currentAlarmId = alarmId
             Log.d("AlarmService", "Alarm Service started for ID: $alarmId")
+
+            // Start the alarm checker
+            startAlarmChecker()
 
             // 1. Acquire WakeLock to keep the CPU running
             try {
@@ -193,9 +204,78 @@ class AlarmService : Service() {
 
         } catch (e: Exception) {
             Log.e("AlarmService", "Critical error in onStartCommand: ${e.message}")
-            // Ensure we clean up on critical errors
             cleanupResources()
             return START_NOT_STICKY
+        }
+    }
+
+    private fun startAlarmChecker() {
+        alarmChecker = Executors.newSingleThreadScheduledExecutor()
+        alarmChecker?.scheduleAtFixedRate({
+            checkAndTriggerAlarm()
+        }, 0, 1, TimeUnit.SECONDS) // Check every second
+        Log.d("AlarmService", "Alarm checker started")
+    }
+
+    private fun checkAndTriggerAlarm() {
+        try {
+            if (currentAlarmId == -1) return
+
+            // Get current time
+            val currentTime = Calendar.getInstance()
+            val currentHour = currentTime.get(Calendar.HOUR_OF_DAY)
+            val currentMinute = currentTime.get(Calendar.MINUTE)
+            val currentDayOfWeek = currentTime.get(Calendar.DAY_OF_WEEK) - 1 // Convert to 0-6 format
+            
+            // Here you would normally check against your database
+            // For now, let's assume we have the alarm data
+            // You'll need to implement database access in Kotlin or pass alarm data from JS
+            
+            val shouldTrigger = checkAlarmConditions(currentHour, currentMinute, currentDayOfWeek)
+            
+            if (shouldTrigger) {
+                Log.d("AlarmService", "Alarm condition met - triggering alarm and reloading app")
+                triggerAlarmAndReloadApp()
+            }
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Error in checkAndTriggerAlarm: ${e.message}")
+        }
+    }
+
+    private fun checkAlarmConditions(hour: Int, minute: Int, dayOfWeek: Int): Boolean {
+        // This is a simplified check - you'll need to implement proper database access
+        // or pass alarm configuration from JavaScript
+        
+        // For now, return true if we have a valid alarm ID
+        // In a real implementation, you'd check:
+        // 1. Alarm time matches current time
+        // 2. Alarm is enabled
+        // 3. Current day is in repeat days (if any)
+        
+        return currentAlarmId > 0
+    }
+
+    private fun triggerAlarmAndReloadApp() {
+        try {
+            Log.d("AlarmService", "Triggering alarm and reloading app for alarm ID: $currentAlarmId")
+            
+            // Stop the alarm checker to prevent multiple triggers
+            alarmChecker?.shutdown()
+            
+            // Launch the app with the alarm screen
+            val restartIntent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                putExtra("ALARM_ID", currentAlarmId)
+                putExtra("RELOAD_FOR_ALARM", true)
+            }
+            
+            startActivity(restartIntent)
+            
+            // The existing alarm playing logic will handle sound/vibration
+            // since we're already in the AlarmService
+            
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Error in triggerAlarmAndReloadApp: ${e.message}")
         }
     }
 
@@ -207,6 +287,16 @@ class AlarmService : Service() {
 
     private fun cleanupResources() {
         Log.d("AlarmService", "Cleaning up resources...")
+
+        // Stop alarm checker
+        try {
+            alarmChecker?.shutdown()
+            Log.d("AlarmService", "Alarm checker stopped")
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Error stopping alarm checker: ${e.message}")
+        } finally {
+            alarmChecker = null
+        }
 
         // Clean up MediaPlayer
         try {

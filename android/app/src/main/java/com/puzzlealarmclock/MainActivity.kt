@@ -1,6 +1,8 @@
 package com.puzzlealarmclock
 
-import android.os.Bundle // Import Bundle
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -30,6 +32,38 @@ class MainActivity : ReactActivity() {
         }
         return bundle
       }
+    }
+  }
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    
+    // Check if the app was launched by an alarm
+    handleAlarmLaunch(intent)
+  }
+
+  override fun onNewIntent(intent: Intent?) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    
+    // Handle alarm launch when app is already running
+    intent?.let { handleAlarmLaunch(it) }
+  }
+
+  private fun handleAlarmLaunch(intent: Intent) {
+    val alarmId = intent.getIntExtra("ALARM_ID", -1)
+    val isAlarmReload = intent.getBooleanExtra("RELOAD_FOR_ALARM", false)
+    
+    if (alarmId != -1 && isAlarmReload) {
+      Log.d("MainActivity", "App launched/reloaded for alarm ID: $alarmId")
+      
+      // Pass the alarm ID to React Native
+      val bundle = Bundle().apply {
+        putInt("alarmId", alarmId)
+      }
+      
+      // You might need to update the React Native bridge to handle this
+      // For now, we'll rely on the App component to handle the alarmId prop
     }
   }
 }
