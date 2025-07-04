@@ -24,6 +24,7 @@ import {
   deleteAlarm,
   Alarm,
   ChallengeConfig,
+  MemoryGameChallengeConfig,
   StepsChallengeConfig // Import the specific config type
 } from '../database/database';
 
@@ -47,10 +48,10 @@ const EditAlarmScreen = () => {
   const [time, setTime] = useState(new Date());
   const [label, setLabel] = useState('');
   const [repeatDays, setRepeatDays] = useState<number[]>([]); // 0 for Sun, 1 for Mon, etc.
-  const [dismissMethod, setDismissMethod] = useState<'STANDARD' | 'STEPS'>('STANDARD');
+  const [dismissMethod, setDismissMethod] = useState<'STANDARD' | 'STEPS' | 'MEMORY_GAME'>('STANDARD');
   const [stepCount, setStepCount] = useState(30);
   const [wakeUpCheck, setWakeUpCheck] = useState(false);
-
+  const [memoryGamePairs, setMemoryGamePairs] = useState(6);
   // --- DATA LOADING FOR EDIT MODE ---
   useEffect(() => {
   if (isEditing) {
@@ -73,7 +74,12 @@ const EditAlarmScreen = () => {
               // TypeScript knows that if the type is 'STEPS', challengeConfig MUST be StepsChallengeConfig
               const config = fetchedAlarm.challengeConfig as StepsChallengeConfig;
               setStepCount(config.count || 30);
-            }
+          }
+          // Add logic to load memory game config
+          if (fetchedAlarm.challengeType === 'MEMORY_GAME') {
+            const config = fetchedAlarm.challengeConfig as MemoryGameChallengeConfig;
+            setMemoryGamePairs(config.pairs || 6);
+          }
         }
       } catch(error) {
           console.error(error);
@@ -110,39 +116,41 @@ const EditAlarmScreen = () => {
     let config: ChallengeConfig = {};
     if (dismissMethod === 'STEPS') {
         config = { count: stepCount };
+    } else if (dismissMethod === 'MEMORY_GAME') {
+      config = { pairs: memoryGamePairs };
     }
-  const alarmData: Omit<Alarm, 'id'> = {
-    time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-    label,
-    repeatDays,
-    isEnabled: true,
-    challengeType: dismissMethod,
-    challengeConfig: config,
-    wakeUpCheck,
+    const alarmData: Omit<Alarm, 'id'> = {
+      time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+      label,
+      repeatDays,
+      isEnabled: true,
+      challengeType: dismissMethod,
+      challengeConfig: config,
+      wakeUpCheck,
+    };
+
+    try {
+      const db = await getDBConnection();
+      let currentAlarmId = alarmId;
+
+      if (isEditing) {
+          await updateAlarm(db, { ...alarmData, id: currentAlarmId });
+      } else {
+          // For new alarms, we need the ID returned from the database
+          const newId = await saveAlarm(db, alarmData);
+          currentAlarmId = newId;
+      }
+
+      // Schedule the alarm using the native module
+      if (currentAlarmId) {
+          AlarmScheduler.set(currentAlarmId, alarmData.time, alarmData.repeatDays);
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      console.error('Failed to save alarm:', error);
+    }
   };
-
-  try {
-    const db = await getDBConnection();
-    let currentAlarmId = alarmId;
-
-    if (isEditing) {
-        await updateAlarm(db, { ...alarmData, id: currentAlarmId });
-    } else {
-        // For new alarms, we need the ID returned from the database
-        const newId = await saveAlarm(db, alarmData);
-        currentAlarmId = newId;
-    }
-
-    // Schedule the alarm using the native module
-    if (currentAlarmId) {
-        AlarmScheduler.set(currentAlarmId, alarmData.time, alarmData.repeatDays);
-    }
-
-    navigation.goBack();
-  } catch (error) {
-    console.error('Failed to save alarm:', error);
-  }
-};
   
   const handleDelete = () => {
   Alert.alert(
@@ -232,6 +240,15 @@ const EditAlarmScreen = () => {
             >
               <Text style={styles.optionText}>Steps Challenge</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                dismissMethod === 'MEMORY_GAME' && styles.optionButtonSelected,
+              ]}
+              onPress={() => setDismissMethod('MEMORY_GAME')}
+            >
+              <Text style={styles.optionText}>Memory Game</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -250,6 +267,21 @@ const EditAlarmScreen = () => {
             </View>
           </View>
         )}
+        {dismissMethod === 'MEMORY_GAME' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Memory Game Configuration</Text>
+          <View style={styles.inlineSetting}>
+            <Text>Number of pairs:</Text>
+            {/* You could use a slider or buttons here for a better UX */}
+            <TextInput
+              style={styles.numericInput}
+              value={String(memoryGamePairs)}
+              onChangeText={text => setMemoryGamePairs(Number(text) || 6)}
+              keyboardType="number-pad"
+            />
+          </View>
+        </View>
+      )}
 
         {/* Wake-up Check */}
         <View style={[styles.section, styles.inlineSetting, styles.switchSection]}>

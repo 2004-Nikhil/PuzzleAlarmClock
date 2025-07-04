@@ -8,7 +8,10 @@ export interface StandardChallengeConfig {} // An empty object for now
 export interface StepsChallengeConfig {
   count: number;
 }
-export type ChallengeConfig = StandardChallengeConfig | StepsChallengeConfig;
+export interface MemoryGameChallengeConfig {
+  pairs: number; // e.g., 6 pairs (12 cards), 8 pairs (16 cards)
+}
+export type ChallengeConfig = StandardChallengeConfig | StepsChallengeConfig | MemoryGameChallengeConfig;
 
 export interface Alarm {
   id?: number;
@@ -16,7 +19,7 @@ export interface Alarm {
   label: string;
   repeatDays: number[]; // [0, 1, 2, 3, 4, 5, 6]
   isEnabled: boolean;
-  challengeType: 'STANDARD' | 'STEPS'; // This now acts as a "discriminator"
+  challengeType: 'STANDARD' | 'STEPS' | 'MEMORY_GAME'; // This now acts as a "discriminator"
   challengeConfig: ChallengeConfig; // Use the new union type
   wakeUpCheck: boolean;
 }

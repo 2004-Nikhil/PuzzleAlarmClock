@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, StatusBar,BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, StatusBar, BackHandler, TouchableOpacity } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { getDBConnection, getAlarmById, Alarm, StepsChallengeConfig } from '../database/database';
+import { getDBConnection, getAlarmById, Alarm, StepsChallengeConfig, MemoryGameChallengeConfig } from '../database/database';
 import AlarmScheduler from '../native/AlarmSchedulerModule';
 import StepChallenge from '../components/StepChallenge';
+import MemoryGame from '../components/MemoryGame';
 
 type AlarmRingingScreenRouteProp = RouteProp<RootStackParamList, 'AlarmRinging'>;
 
@@ -68,6 +69,14 @@ const AlarmRingingScreen = ({ route }: Props) => {
             onChallengeComplete={handleDismiss}
           />
         );
+      case 'MEMORY_GAME':
+        const memoryConfig = alarm.challengeConfig as MemoryGameChallengeConfig;
+        return (
+          <MemoryGame
+            pairs={memoryConfig.pairs}
+            onChallengeComplete={handleDismiss}
+          />
+        );
       case 'STANDARD':
       default:
         // For a standard alarm, we'd have a simple dismiss button
@@ -99,9 +108,6 @@ const AlarmRingingScreen = ({ route }: Props) => {
     </View>
   );
 };
-
-// You need to add TouchableOpacity to the imports for the Standard dismiss
-import { TouchableOpacity } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
