@@ -51,6 +51,10 @@ const AlarmRingingScreen = ({ route }: Props) => {
     console.log("Dismissing alarm and stopping service...");
     // This is the crucial call to our native module to stop sound/vibration
     AlarmScheduler.stop();
+    
+    // Schedule wake-up check for 4 minutes from now
+    AlarmScheduler.scheduleWakeUpCheck(alarmId);
+    
     // Close the app after a short delay
     setTimeout(() => {
       BackHandler.exitApp();

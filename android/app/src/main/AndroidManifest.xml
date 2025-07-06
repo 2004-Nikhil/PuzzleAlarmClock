@@ -37,5 +37,11 @@
       android:enabled="true"
       android:exported="false"
       android:foregroundServiceType="mediaPlayback" /> 
+      <receiver android:name=".WakeUpCheckReceiver" android:enabled="true" android:exported="true">
+        <intent-filter>
+            <action android:name="WAKE_UP_CHECK" />
+            <action android:name="WAKE_UP_RESPONSE" />
+        </intent-filter>
+      </receiver>
     </application>
 </manifest>

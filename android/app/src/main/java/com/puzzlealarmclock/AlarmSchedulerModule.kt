@@ -67,4 +67,74 @@ class AlarmSchedulerModule(private val reactContext: ReactApplicationContext) : 
         val serviceIntent = Intent(reactContext, AlarmService::class.java)
         reactContext.stopService(serviceIntent)
     }
+
+    @ReactMethod
+    fun scheduleWakeUpCheck(alarmId: Int) {
+        Log.d("AlarmSchedulerModule", "Scheduling wake-up check for alarm ID $alarmId")
+        
+        // Schedule wake-up check for 4 minutes from now
+        val wakeUpCheckTime = System.currentTimeMillis() + (4 * 60 * 1000) // 4 minutes
+        
+        val intent = Intent(reactContext, WakeUpCheckReceiver::class.java).apply {
+            putExtra("ALARM_ID", alarmId)
+            action = "WAKE_UP_CHECK"
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            reactContext,
+            alarmId + 10000, // Use different request code to avoid conflicts
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            wakeUpCheckTime,
+            pendingIntent
+        )
+        
+        Log.d("AlarmSchedulerModule", "Wake-up check scheduled for ${wakeUpCheckTime}")
+    }
+
+    @ReactMethod
+    fun cancelWakeUpCheck(alarmId: Int) {
+        Log.d("AlarmSchedulerModule", "Cancelling wake-up check for alarm ID $alarmId")
+        
+        val intent = Intent(reactContext, WakeUpCheckReceiver::class.java).apply {
+            action = "WAKE_UP_CHECK"
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            reactContext,
+            alarmId + 10000,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        alarmManager.cancel(pendingIntent)
+        Log.d("AlarmSchedulerModule", "Wake-up check cancelled")
+    }
+
+    @ReactMethod
+    fun respondToWakeUpCheck(alarmId: Int) {
+        Log.d("AlarmSchedulerModule", "User responded to wake-up check for alarm ID $alarmId")
+        
+        // Cancel the wake-up check
+        cancelWakeUpCheck(alarmId)
+        
+        // Cancel any pending alarm re-trigger
+        val intent = Intent(reactContext, AlarmReceiver::class.java).apply {
+            action = "WAKE_UP_TIMEOUT"
+        }
+        
+        val pendingIntent = PendingIntent.getBroadcast(
+            reactContext,
+            alarmId + 20000,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        alarmManager.cancel(pendingIntent)
+        Log.d("AlarmSchedulerModule", "Wake-up timeout cancelled")
+    }
 }

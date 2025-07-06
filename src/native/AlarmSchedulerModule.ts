@@ -5,6 +5,9 @@ interface IAlarmScheduler {
   setAlarm(alarmId: number, timestamp: number): void;
   cancelAlarm(alarmId: number): void;
   stopAlarmService(): void;
+  scheduleWakeUpCheck(alarmId: number): void;
+  cancelWakeUpCheck(alarmId: number): void;
+  respondToWakeUpCheck(alarmId: number): void;
 }
 
 // Get the native module and cast it to our interface
@@ -47,5 +50,17 @@ export default {
   stop: () => {
     console.log("JS: Stopping alarm service.");
     AlarmScheduler.stopAlarmService();
+  },
+  scheduleWakeUpCheck: (alarmId: number) => {
+    console.log(`JS: Scheduling wake-up check for alarm ID ${alarmId}`);
+    AlarmScheduler.scheduleWakeUpCheck(alarmId);
+  },
+  cancelWakeUpCheck: (alarmId: number) => {
+    console.log(`JS: Cancelling wake-up check for alarm ID ${alarmId}`);
+    AlarmScheduler.cancelWakeUpCheck(alarmId);
+  },
+  respondToWakeUpCheck: (alarmId: number) => {
+    console.log(`JS: Responding to wake-up check for alarm ID ${alarmId}`);
+    AlarmScheduler.respondToWakeUpCheck(alarmId);
   }
 };
