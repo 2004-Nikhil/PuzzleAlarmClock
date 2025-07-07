@@ -72,27 +72,6 @@ class AlarmSchedulerModule(private val reactContext: ReactApplicationContext) : 
     fun scheduleWakeUpCheck(alarmId: Int) {
         Log.d("AlarmSchedulerModule", "Scheduling wake-up check for alarm ID $alarmId")
         
-        // Schedule warning notification for 3 minutes from now (1 minute before wake-up check)
-        val warningTime = System.currentTimeMillis() + (3 * 60 * 1000) // 3 minutes
-        val warningIntent = Intent(reactContext, WakeUpCheckReceiver::class.java).apply {
-            putExtra("ALARM_ID", alarmId)
-            action = "WAKE_UP_WARNING"
-        }
-        
-        val warningPendingIntent = PendingIntent.getBroadcast(
-            reactContext,
-            alarmId + 15000, // Different request code for warning
-            warningIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        // Use setExactAndAllowWhileIdle to ensure it fires even in doze mode
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            warningTime,
-            warningPendingIntent
-        )
-        
         // Schedule wake-up check for 4 minutes from now
         val wakeUpCheckTime = System.currentTimeMillis() + (4 * 60 * 1000) // 4 minutes
         
@@ -114,27 +93,12 @@ class AlarmSchedulerModule(private val reactContext: ReactApplicationContext) : 
             pendingIntent
         )
         
-        Log.d("AlarmSchedulerModule", "Wake-up warning scheduled for ${warningTime} (${java.util.Date(warningTime)})")
         Log.d("AlarmSchedulerModule", "Wake-up check scheduled for ${wakeUpCheckTime} (${java.util.Date(wakeUpCheckTime)})")
     }
 
     @ReactMethod
     fun cancelWakeUpCheck(alarmId: Int) {
         Log.d("AlarmSchedulerModule", "Cancelling wake-up check for alarm ID $alarmId")
-        
-        // Cancel the warning notification
-        val warningIntent = Intent(reactContext, WakeUpCheckReceiver::class.java).apply {
-            action = "WAKE_UP_WARNING"
-        }
-        
-        val warningPendingIntent = PendingIntent.getBroadcast(
-            reactContext,
-            alarmId + 15000,
-            warningIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        alarmManager.cancel(warningPendingIntent)
         
         // Cancel the wake-up check
         val intent = Intent(reactContext, WakeUpCheckReceiver::class.java).apply {
@@ -149,7 +113,7 @@ class AlarmSchedulerModule(private val reactContext: ReactApplicationContext) : 
         )
         
         alarmManager.cancel(pendingIntent)
-        Log.d("AlarmSchedulerModule", "Wake-up check and warning cancelled")
+        Log.d("AlarmSchedulerModule", "Wake-up check cancelled")
     }
 
     @ReactMethod
