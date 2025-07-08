@@ -132,6 +132,10 @@ export const updateAlarm = async (db: SQLiteDatabase, alarm: Alarm) => {
     return db.executeSql(updateQuery, values);
 };
 
+export const updateAlarmEnabledStatus = async (db: SQLiteDatabase, id: number, isEnabled: boolean) => {
+  const updateQuery = `UPDATE Alarms SET isEnabled = ? WHERE id = ?`;
+  return db.executeSql(updateQuery, [isEnabled, id]);
+};
 
 export const deleteAlarm = async (db: SQLiteDatabase, id: number) => {
   const deleteQuery = `DELETE FROM Alarms WHERE id = ?`;
