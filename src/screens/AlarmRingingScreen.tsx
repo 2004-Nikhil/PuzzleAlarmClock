@@ -52,8 +52,10 @@ const AlarmRingingScreen = ({ route }: Props) => {
     // This is the crucial call to our native module to stop sound/vibration
     AlarmScheduler.stop();
     
-    // Schedule wake-up check for 4 minutes from now
-    AlarmScheduler.scheduleWakeUpCheck(alarmId);
+    // Only schedule wake-up check if the alarm has wakeUpCheck enabled
+    if (alarm?.wakeUpCheck) {
+      AlarmScheduler.scheduleWakeUpCheck(alarmId);
+    }
     
     // Close the app after a short delay
     setTimeout(() => {

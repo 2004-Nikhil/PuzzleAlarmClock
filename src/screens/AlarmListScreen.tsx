@@ -59,12 +59,14 @@ const AlarmListScreen = () => {
         if (isEnabled) {
           // Schedule the alarm
           AlarmScheduler.set(alarmId, alarm.time, alarm.repeatDays);
+          // Only schedule wake-up check if the alarm has wakeUpCheck enabled
           if (alarm.wakeUpCheck) {
             AlarmScheduler.scheduleWakeUpCheck(alarmId);
           }
         } else {
           // Cancel the alarm
           AlarmScheduler.cancel(alarmId);
+          // Only cancel wake-up check if the alarm had wakeUpCheck enabled
           if (alarm.wakeUpCheck) {
             AlarmScheduler.cancelWakeUpCheck(alarmId);
           }
